@@ -18,14 +18,14 @@ color line_color = color(129, 129, 129);
 color text_color = color(80, 80, 80);
 color plot_color = color(255,0,0);
 
-PFont font = createFont("arial", 12);
+PFont font;
 
 String logfile = "No logfile loaded.";
 
 void setup() {
   size(1000, 800);
 
-
+  font = createFont("arial", 12);
 
   setup_UI();
 
@@ -130,4 +130,3 @@ String loadFile (Frame f, String title, String defDir, String fileType) {
   String path = fd.getDirectory()+fd.getFile();
   return path;
 }
-

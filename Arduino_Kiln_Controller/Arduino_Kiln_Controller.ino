@@ -1,4 +1,4 @@
-#include <PID_v1.h>
+ #include <PID_v1.h>
 #include "Adafruit_MAX31855.h"
 #include <LiquidCrystal.h>
 
@@ -55,6 +55,7 @@ void setup()
 
   //initialize the serial link with processing
   Serial.begin(9600);
+  Serial.println("START");
   
   pinMode(7, OUTPUT); 
   digitalWrite(7, LOW);
@@ -73,7 +74,7 @@ void setup()
   lcd.setCursor(0,0); 
   lcd.print("KILN CONTROLLER");
   lcd.setCursor(0,1); 
-  lcd.print("VERSION 1.3");
+  lcd.print("VERSION 1.4");
   
   // wait for MAX thermocouple interface chip to stabilize
   delay(500);

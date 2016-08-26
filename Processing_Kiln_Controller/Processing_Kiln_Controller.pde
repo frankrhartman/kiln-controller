@@ -58,7 +58,7 @@ float ramp_creepy_mattes[][] = {
 };
 
 float ramp_creepy_mattes_cool[][] = {
-  {60, 1170, 15},
+  {60, 1170, 15}, 
   {-500, 1000, 0}, 
   {-50, 700, 0}, 
   {0, 0, 0}
@@ -70,8 +70,8 @@ float ramp_creepy_gloss[][] = {
 };
 
 float ramp_test[][] = {
-  {600, 50, 5},
-  {-1, 45, 0},
+  {600, 50, 5}, 
+  {-1, 45, 0}, 
   {0, 0, 0}
 };
 
@@ -80,7 +80,7 @@ float current_ramp[][] = ramp_test;
 // max temperature reached
 float max_temp = 0.0;
 
-// did we get a zero time message from arduino yet
+// did we get a START message from arduino yet
 // else get rid of junk on the serial bus
 boolean clean_start = false;
 
@@ -117,9 +117,8 @@ void setup() {
 
   // Open whatever serial port you are using
   // Add UI to select serial port form list instead of printing
-  String portName = Serial.list()[5];
+  String portName = Serial.list()[0];
   myPort = new Serial(this, portName, 9600);
-
   // buffer until a linefeed character
   // then trigger serialEvent callback
   myPort.bufferUntil(lf);
@@ -165,57 +164,57 @@ void setup_UI() {
 
   cp5.addBang("START")
     .setPosition(1000, 50)
-      .setSize(100, 40)
-        .setColorActive(fg_color)
-          .setColorBackground(bg_color)
-            .setColorForeground(bg_color)
-              .setColorCaptionLabel(text_color)
-                .getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER)
-                  ;   
+    .setSize(100, 40)
+    .setColorActive(fg_color)
+    .setColorBackground(bg_color)
+    .setColorForeground(bg_color)
+    .setColorCaptionLabel(text_color)
+    .getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER)
+    ;   
 
   cp5.addBang("STOP")
     .setPosition(1000, 100)
-      .setSize(100, 40)
-        .setColorActive(fg_color)
-          .setColorBackground(bg_color)
-            .setColorForeground(bg_color)
-              .setColorCaptionLabel(text_color)
-                .getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER)
-                  ;      
+    .setSize(100, 40)
+    .setColorActive(fg_color)
+    .setColorBackground(bg_color)
+    .setColorForeground(bg_color)
+    .setColorCaptionLabel(text_color)
+    .getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER)
+    ;      
   cp5.addBang("QUIT")
     .setPosition(1000, 750)
-      .setSize(100, 40)
-        .setColorActive(fg_color)
-          .setColorBackground(bg_color)
-            .setColorForeground(bg_color)
-              .setColorCaptionLabel(text_color)
-                .getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER)
-                  ;
-                  
+    .setSize(100, 40)
+    .setColorActive(fg_color)
+    .setColorBackground(bg_color)
+    .setColorForeground(bg_color)
+    .setColorCaptionLabel(text_color)
+    .getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER)
+    ;
+
   cp5.addToggle("override")
-     .setPosition(1000,650)
-     .setSize(100,40)
-     .setColorActive(fg_color)
-          .setColorBackground(bg_color)
-            .setColorForeground(bg_color)
-              .setColorCaptionLabel(text_color)
-                .getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER)
-     ;
+    .setPosition(1000, 650)
+    .setSize(100, 40)
+    .setColorActive(fg_color)
+    .setColorBackground(bg_color)
+    .setColorForeground(bg_color)
+    .setColorCaptionLabel(text_color)
+    .getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER)
+    ;
   cp5.addNumberbox("override_value")
-     .setPosition(1000,700)
-     .setSize(100,20)
-     .setRange(0,1500)
-     .setMultiplier(1) // set the sensitifity of the numberbox
-     .setDirection(Controller.HORIZONTAL) // change the control direction to left/right
-     .setValue(1000)
-          .setColorActive(text_color)
-          .setColorBackground(bg_color)
-            .setColorForeground(bg_color)
-              .setColorCaptionLabel(text_color)
-              .setColorValueLabel(text_color)
-              .setCaptionLabel("")
-                .getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER)
-     ;
+    .setPosition(1000, 700)
+    .setSize(100, 20)
+    .setRange(0, 1500)
+    .setMultiplier(1) // set the sensitifity of the numberbox
+    .setDirection(Controller.HORIZONTAL) // change the control direction to left/right
+    .setValue(1000)
+    .setColorActive(text_color)
+    .setColorBackground(bg_color)
+    .setColorForeground(bg_color)
+    .setColorCaptionLabel(text_color)
+    .setColorValueLabel(text_color)
+    .setCaptionLabel("")
+    .getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER)
+    ;
 }
 
 public void START() {
@@ -265,54 +264,61 @@ void draw_text() {
 
   textSize(10);
   for (int i = 0; i < current_ramp.length; i++) {
-    for(int j = 0; j < 3; j++) {
-      text(current_ramp[i][j],975+j*60,500+i*25);
+    for (int j = 0; j < 3; j++) {
+      text(current_ramp[i][j], 975+j*60, 500+i*25);
     }
   }
 }
 
 void processSerial() {
   // split into tokens and parse
+  //println(inBuffer);
+  if(inBuffer.substring(0,5).equals("START")) {
+    println("Got start message - Begin logging");
+    clean_start = true;
+    return;
+  }
+
   String[] tokens = splitTokens(inBuffer, ",");
 
-  if (tokens[1] == "ERROR") ctemp = 0.0;
-  else ctemp = float(tokens[1]);
-  time = float(tokens[0]);
-  setpoint = float(tokens[2]);
-  controller_out = float(tokens[3]);
-  ftemp = ctemp *(9.0/5.0) + 32.0;
-  
-  if(ctemp > max_temp) max_temp = ctemp;
-
-  // Add time and ctemp to ArrayList histories
-  temp_hist.add(ctemp);
-  time_hist.add(time);
-  set_hist.add(setpoint);
-  controller_hist.add(controller_out);
-
-  // only log after we had seen a zero time value
-  // to eliminate logging of junk on the serial port
-  if (time==0) clean_start = true;
-
   if (clean_start) {
+    if (tokens[1] == "ERROR") ctemp = 0.0;
+    else ctemp = float(tokens[1]);
+    time = float(tokens[0]);
+    setpoint = float(tokens[2]);
+    controller_out = float(tokens[3]);
+    ftemp = ctemp *(9.0/5.0) + 32.0;
+
+    if (ctemp > max_temp) max_temp = ctemp;
+
+    // Add time and ctemp to ArrayList histories
+    temp_hist.add(ctemp);
+    time_hist.add(time);
+    set_hist.add(setpoint);
+    controller_hist.add(controller_out);
+
+    // only log after we had seen a zero time value
+    // to eliminate logging of junk on the serial port
+    if (time==0) clean_start = true;
+
     // append string to firing log file
     output.print(inBuffer);
 
     // add data to running graph
     data.addPoint(time, ctemp, setpoint);
     my_plot.set_data(data);
+
+    // update the ramp controller
+    my_controller.setTime(time);
+    my_controller.setTemp(ctemp);
+    my_controller.calculate();
+    setpoint = my_controller.getSetpoint();
+
+    if (override) setpoint = override_value;
+
+    //send new setpoint back to arduino
+    Send_To_Arduino();
   }
-
-  // update the ramp controller
-  my_controller.setTime(time);
-  my_controller.setTemp(ctemp);
-  my_controller.calculate();
-  setpoint = my_controller.getSetpoint();
-  
-  if(override) setpoint = override_value;
-
-  //send new setpoint back to arduino
-  Send_To_Arduino();
 }
 
 void serialEvent(Serial p) {
@@ -323,22 +329,22 @@ void serialEvent(Serial p) {
 
 float calculate_temp_rate()
 {
-  if(temp_hist.size() > 120) {
-    
+  if (temp_hist.size() > 120) {
+
     float temp_sum = 0.0;
-    for(int j = 0; j <= 2; j++) {
+    for (int j = 0; j <= 2; j++) {
       temp_sum += (Float) temp_hist.get(temp_hist.size()-j*30-1);
     }
     float temp_avg1 = temp_sum / 3.0;
-    
+
     temp_sum = 0.0;
-    for(int j = 2; j <= 4; j++) {
+    for (int j = 2; j <= 4; j++) {
       temp_sum += (Float) temp_hist.get(temp_hist.size()-j*30-1);
     }
     float temp_avg2 = temp_sum / 3.0;
-    
+
     float rate = ((temp_avg1 - temp_avg2) / 60.0) * 3600.0;
-    return rate; 
+    return rate;
   } else { 
     return 0.0;
   }
@@ -372,11 +378,11 @@ byte[] floatArrayToByteArray(float[] input)
   byte[] b = new byte[4];
   byte[] out = new byte[len];
   ByteBuffer buf = ByteBuffer.wrap(b);
-  for (int i=0;i<input.length;i++) 
+  for (int i=0; i<input.length; i++) 
   {
     buf.position(0);
     buf.putFloat(input[i]);
-    for (int j=0;j<4;j++) out[j+i*4]=b[3-j];
+    for (int j=0; j<4; j++) out[j+i*4]=b[3-j];
   }
   return out;
 }

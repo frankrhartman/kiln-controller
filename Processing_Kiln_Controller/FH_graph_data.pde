@@ -16,7 +16,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>
 =====================================================================
 
 // FloatTable class from graphing example modified to allow
-// dynamic insertion of data
+// dynamic insertion of data.
 
 class FH_kiln_data {
   int rowCount;

@@ -63,7 +63,7 @@ float last_valid_temp=0.0;
 int temp_error=0;
 
 // correction factor to calibrate thermocouple output to Orton cone 6
-float calibration = 1.0703; 
+float calibration = 1.0939; 
 
 void setup()
 {

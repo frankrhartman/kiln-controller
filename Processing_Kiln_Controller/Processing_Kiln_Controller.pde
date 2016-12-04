@@ -142,7 +142,7 @@ void setup() {
   myPort.bufferUntil(lf);
 
   // open a log file for writing e.g. "07-14-2012-1038.log"
-  filename = month() + "-" + day() + "-" + year() + "-" + hour() + minute() + ".log";
+  filename = "Logs/" + month() + "-" + day() + "-" + year() + "-" + hour() + minute() + ".csv";
   output = createWriter(filename);
 
   // create space to store time, temp, setpoint, and controller history data

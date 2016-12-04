@@ -50,9 +50,8 @@ FH_ramp_hold my_controller;
 
 // ramps for the controller
 float ramp_980_hold[][] = {
-  {180, 550, 0}, 
-  {90, 1102, 0}, 
-  {60, 1185, 0}, 
+  {55, 105, 0}, 
+  {180, 1185, 0}, 
   {-250, 980, 60}, 
   {0, 0, 0}
 };
@@ -67,16 +66,8 @@ float ramp_ron_roy[][] = {
 };
 
 float ramp_creepy_mattes[][] = {
-  {180, 550, 0}, 
-  {90, 1102, 0}, 
-  {60, 1185, 15}, 
-  {-500, 1000, 0}, 
-  {-50, 700, 0}, 
-  {0, 0, 0}
-};
-
-float ramp_creepy_mattes_cool[][] = {
-  {60, 1170, 15}, 
+  {55, 105, 0}, 
+  {180, 1185, 15}, 
   {-500, 1000, 0}, 
   {-50, 700, 0}, 
   {0, 0, 0}
@@ -117,10 +108,15 @@ color line_color = color(129, 129, 129);
 color text_color = color(80, 80, 80);
 color plot_color = color(255, 0, 0);
 
+// UI positions
+int  right_x = 850;  
+int bot_y = 600;
+int bot_line = 50;
+
 PFont font;
 
 void setup() { 
-  size(1150, 850);
+  size(1024, 768);
 
   font = createFont("arial", 12);
 
@@ -135,13 +131,14 @@ void setup() {
 
   // Open whatever serial port you are using
   // Add UI to select serial port form list instead of printing
-  String portName = Serial.list()[0];
+  //String portName = Serial.list()[0];
+  String portName = "/dev/pts/17"; //For coding without an Arduino attached see tty0tty.c
   myPort = new Serial(this, portName, 9600);
   // buffer until a linefeed character
   // then trigger serialEvent callback
   myPort.bufferUntil(lf);
 
-  // open a log file for writing e.g. "07-14-2012-1038.log"
+  // open a log file for writing e.g. "07-14-2012-1038.csv"
   filename = "Logs/" + month() + "-" + day() + "-" + year() + "-" + hour() + minute() + ".csv";
   output = createWriter(filename);
 
@@ -155,7 +152,7 @@ void setup() {
 
   smooth();
 
-  my_plot = new FH_plot(50, 50, 950, 650);
+  my_plot = new FH_plot(50, 50, 800, 550);
   my_plot.set_data(data);
   my_plot.title = "Kiln Temperature";
   my_plot.plot_color = color(128, 128, 128);
@@ -175,13 +172,13 @@ void draw() {
     last_draw = millis();
   }
 }
-
+  
 void setup_UI() {
 
   cp5 = new ControlP5(this);
 
   cp5.addBang("START")
-    .setPosition(1000, 50)
+    .setPosition(right_x, 50)
     .setSize(100, 40)
     .setColorActive(fg_color)
     .setColorBackground(bg_color)
@@ -191,7 +188,7 @@ void setup_UI() {
     ;   
 
   cp5.addBang("STOP")
-    .setPosition(1000, 100)
+    .setPosition(right_x, 100)
     .setSize(100, 40)
     .setColorActive(fg_color)
     .setColorBackground(bg_color)
@@ -199,18 +196,10 @@ void setup_UI() {
     .setColorCaptionLabel(text_color)
     .getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER)
     ;      
-  cp5.addBang("QUIT")
-    .setPosition(1000, 750)
-    .setSize(100, 40)
-    .setColorActive(fg_color)
-    .setColorBackground(bg_color)
-    .setColorForeground(bg_color)
-    .setColorCaptionLabel(text_color)
-    .getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER)
-    ;
+
 
   cp5.addToggle("override")
-    .setPosition(1000, 650)
+    .setPosition(right_x, bot_y-50)
     .setSize(100, 40)
     .setColorActive(fg_color)
     .setColorBackground(bg_color)
@@ -219,7 +208,7 @@ void setup_UI() {
     .getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER)
     ;
   cp5.addNumberbox("override_value")
-    .setPosition(1000, 700)
+    .setPosition(right_x, bot_y)
     .setSize(100, 20)
     .setRange(0, 1500)
     .setMultiplier(1) // set the sensitifity of the numberbox
@@ -231,6 +220,16 @@ void setup_UI() {
     .setColorCaptionLabel(text_color)
     .setColorValueLabel(text_color)
     .setCaptionLabel("")
+    .getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER)
+    ;
+
+  cp5.addBang("QUIT")
+    .setPosition(right_x, bot_y+bot_line)
+    .setSize(100, 40)
+    .setColorActive(fg_color)
+    .setColorBackground(bg_color)
+    .setColorForeground(bg_color)
+    .setColorCaptionLabel(text_color)
     .getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER)
     ;
 }
@@ -259,31 +258,34 @@ void draw_text() {
 
   textSize(20);
   textAlign(LEFT);
-  text("Temp:  " + ctemp + " \u00B0C", 50, 700);  
-  text("Temp:  " + ftemp + " \u00B0F", 270, 700);
-  text("Firing Time:  " + nf(time/60, 4, 1) + " Minutes", 500, 700);
-  text("Rate:  " + calculate_temp_rate() + " C/hr", 800, 700);
-  text("Max:  " + max_temp + " C", 800, 750);
-  text("Set:  " + setpoint + " \u00B0C", 50, 750);
-  text("Set:  " + (setpoint*(9.0/5.0)+32.0) + " \u00B0F", 270, 750);  
-  text("Controller:  " + controller_out*100 + "%", 500, 750);
+  text("Temp:  " + ctemp + " \u00B0C", 50, bot_y);  
+  text("Temp:  " + ftemp + " \u00B0F", 200, bot_y);
+  text("Firing Time:  " + time/3600 + " Hours", 350, bot_y);
+  text("Rate:  " + calculate_temp_rate() + " C/hr", 600, bot_y);
+  
+  text("Set:  " + setpoint + " \u00B0C", 50, bot_y+bot_line);
+  text("Set:  " + (setpoint*(9.0/5.0)+32.0) + " \u00B0F", 200, bot_y+bot_line);  
+  text("Controller:  " + controller_out*100 + "%", 350, bot_y+bot_line);
+  text("Max:  " + max_temp + " C", 600, bot_y+bot_line);
 
   textSize(12);
-  text("Logging to file:  " + filename, 50, 800);
-  text("Serial Data Received:  " + inBuffer, 700, 800);
+  text("Logging to file:  " + filename, 50, bot_y+bot_line*2);
+  text("Serial Data Received:  " + inBuffer, 500, bot_y+bot_line*2);
 
   textSize(16);
-  text("State:  " + my_controller.get_state(), 1000, 200);
-  text("Ramp #:  " + my_controller.get_ramp_num(), 1000, 250);
-  text("Rate:  " + my_controller.get_current_ramp(), 1000, 300);
-  text("Target:  " + my_controller.get_current_target(), 1000, 350);
-  text("Hold:  " + my_controller.get_current_hold(), 1000, 400);
-  text("Heat_Cool:  " + my_controller.get_heat_cool(), 1000, 450);
+  int offset=40;
+  int col_start=200;
+  text("State:  " + my_controller.get_state(), right_x, col_start);
+  text("Ramp #:  " + my_controller.get_ramp_num(), right_x, col_start+offset);
+  text("Rate:  " + my_controller.get_current_ramp(), right_x, col_start+offset*2);
+  text("Target:  " + my_controller.get_current_target(), right_x, col_start+offset*3);
+  text("Hold:  " + my_controller.get_current_hold(), right_x, col_start+offset*4);
+  text("Heat_Cool:  " + my_controller.get_heat_cool(), right_x, col_start+offset*5);
 
   textSize(10);
   for (int i = 0; i < current_ramp.length; i++) {
     for (int j = 0; j < 3; j++) {
-      text(current_ramp[i][j], 975+j*60, 500+i*25);
+      text(current_ramp[i][j], right_x+j*40, col_start+offset*6+i*25);
     }
   }
 }
@@ -320,6 +322,7 @@ void processSerial() {
     if (time==0) clean_start = true;
 
     // append string to firing log file
+    // FIXME Log only every 10 seconds?
     output.print(inBuffer);
 
     // add data to running graph

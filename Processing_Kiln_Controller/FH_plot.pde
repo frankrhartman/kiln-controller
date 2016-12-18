@@ -25,7 +25,7 @@ class FH_plot {
   float outerX1, outerY1;
   float outerX2, outerY2;
   // Offset between entire plot and data plotting area
-  float offset = 70;
+  float offset = 0;
   // Corner of data plotting area
   float plotX1, plotY1; // upper left corner of plot
   float plotX2, plotY2; // lower right corner of plot
@@ -91,17 +91,17 @@ class FH_plot {
     // Show the full area as a dark cyan box  
     fill(bg_color);
     rectMode(CORNERS);
-    stroke(128, 128, 128);
+    stroke(0, 256, 0);
     rect(outerX1, outerY1, outerX2, outerY2);
 
     // Show the plot area as a lighter cyan box  
     fill(fg_color);
     rectMode(CORNERS);
-    stroke(128, 128, 128);
+    stroke(0, 256, 0);
     rect(plotX1, plotY1, plotX2, plotY2);
 
-    drawTitle();
-    drawAxisLabels();
+    //drawTitle();
+    //drawAxisLabels();
     //drawDataPoints();
     if(rowCount > 1) {
       drawXAxisTicks();
@@ -249,4 +249,3 @@ class FH_plot {
 //}
 
 }
-

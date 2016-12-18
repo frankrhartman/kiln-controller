@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>
 
 import processing.serial.*;
 import java.nio.ByteBuffer;
+import java.util.*;
 import controlP5.*;
 
 ControlP5 cp5;
@@ -40,6 +41,11 @@ float setpoint;
 float controller_out;
 float ftemp;
 float time;
+// max temperature reached
+float max_temp = 0.0;
+// did we get a START message from arduino yet?
+// else get rid of junk on the serial bus
+boolean clean_start = false;
 
 // setpoint override
 boolean override = false;
@@ -48,50 +54,26 @@ public float override_value = 1000;
 // the ramp controller
 FH_ramp_hold my_controller;
 
-// ramps for the controller
-float ramp_980_hold[][] = {
-  {55, 105, 0}, 
-  {180, 1185, 0}, 
-  {-250, 980, 60}, 
-  {0, 0, 0}
-};
+// ramps for the controller FIXME amalgamate into one big matrix so can switch at the UI level
+//float ramp_980_hold[][] = { {55, 105, 0}, {180, 1185, 0}, {-250, 980, 60}, {0, 0, 0} };
+//float ramp_ron_roy[][] = { {55, 105, 0}, {200, 1080, 0}, {85, 1200, 15}, {-275, 1000, 0}, {-70, 760, 0}, {0, 0, 0} };
+//float ramp_creepy_mattes[][] = { {55, 105, 0}, {180, 1185, 15}, {-500, 1000, 0}, {-50, 700, 0}, {0, 0, 0} };
+//float ramp_creepy_gloss[][] = { {180, 1185, 15}, {-500, 1085, 30}, {0, 0, 0} };
+//float ramp_creepy_bisque[][] = { {55, 105, 0}, {180, 1070, 15}, {0, 0, 0} };
+//float ramp_test[][] = { {50, 50, 5}, {100, 100, 5}, {-10, 45, 0}, {0, 0, 0} };
+//float current_ramp[][] = ramp_ron_roy;
 
-float ramp_ron_roy[][] = {
-  {55, 105, 0}, 
-  {200, 1080, 0}, 
-  {85, 1200, 15}, 
-  {-275, 1000, 0}, 
-  {-70, 760, 0}, 
-  {0, 0, 0}
-};
+List ramp_names = Arrays.asList("980 Hold", "Ron Roy", "creepy mattes", "creepy gloss", "creepy bisque", "test");
+float ramps[][][] = {
+                      { {55, 105, 0}, {180, 1185, 0}, {-250, 980, 60}, {0, 0, 0} },                                  //980 Hold
+                      { {55, 105, 0}, {200, 1080, 0}, {85, 1200, 15}, {-275, 1000, 0}, {-70, 760, 0}, {0, 0, 0} },   //Ron Roy
+                      { {55, 105, 0}, {180, 1185, 15}, {-500, 1000, 0}, {-50, 700, 0}, {0, 0, 0} },                  //creepy mattes
+                      { {180, 1185, 15}, {-500, 1085, 30}, {0, 0, 0} },                                              //creeoy gloss
+                      { {55, 105, 0}, {180, 1070, 15}, {0, 0, 0} },                                                  //creepy bisque
+                      { {50, 50, 5}, {100, 100, 5}, {-10, 45, 0}, {0, 0, 0} }                                        //test
+                    };
 
-float ramp_creepy_mattes[][] = {
-  {55, 105, 0}, 
-  {180, 1185, 15}, 
-  {-500, 1000, 0}, 
-  {-50, 700, 0}, 
-  {0, 0, 0}
-};
-
-float ramp_creepy_gloss[][] = {
-  {180, 1185, 15}, 
-  {0, 0, 0}
-};
-
-float ramp_test[][] = {
-  {600, 50, 5}, 
-  {-1, 45, 0}, 
-  {0, 0, 0}
-};
-
-float current_ramp[][] = ramp_test;
-
-// max temperature reached
-float max_temp = 0.0;
-
-// did we get a START message from arduino yet
-// else get rid of junk on the serial bus
-boolean clean_start = false;
+float current_ramp[][] = ramps[0];
 
 // for the running plot
 FH_plot my_plot;
@@ -102,23 +84,23 @@ int last_draw = 0;
 int draw_interval = 1000;
 
 // colors for the display
-color bg_color = color(200, 200, 200);
-color fg_color = color(240, 240, 240);
+color bg_color = color(0, 0, 0);
+color button_color = color(0,0,255);
+color button_active_color = color(0,255,255);
+color plot_fg_color = color(0, 0, 0);
 color line_color = color(129, 129, 129);
-color text_color = color(80, 80, 80);
+color text_color = color(255, 255, 255);
 color plot_color = color(255, 0, 0);
+int pad = 5; // border around UI elements
 
 // UI positions
-int  right_x = 850;  
+int  right_x = 512;  
 int bot_y = 600;
 int bot_line = 50;
 
-PFont font;
-
 void setup() { 
   size(1024, 768);
-
-  font = createFont("arial", 12);
+  //fullScreen();  //doesn't work correctly
 
   // ramp / hold controller
   my_controller = new FH_ramp_hold(current_ramp);
@@ -132,14 +114,14 @@ void setup() {
   // Open whatever serial port you are using
   // Add UI to select serial port form list instead of printing
   //String portName = Serial.list()[0];
-  String portName = "/dev/pts/17"; //For coding without an Arduino attached see tty0tty.c
+  String portName = "/dev/pts/12"; //For coding without an Arduino attached see tty0tty.c
   myPort = new Serial(this, portName, 9600);
   // buffer until a linefeed character
   // then trigger serialEvent callback
   myPort.bufferUntil(lf);
 
   // open a log file for writing e.g. "07-14-2012-1038.csv"
-  filename = "Logs/" + month() + "-" + day() + "-" + year() + "-" + hour() + minute() + ".csv";
+  filename = "/home/frank/kiln_logs/" + month() + "-" + day() + "-" + year() + "-" + hour() + minute() + ".csv";
   output = createWriter(filename);
 
   // create space to store time, temp, setpoint, and controller history data
@@ -152,12 +134,11 @@ void setup() {
 
   smooth();
 
-  my_plot = new FH_plot(50, 50, 800, 550);
+  my_plot = new FH_plot(512+pad, 300+pad, 1023-pad, 667-pad);
   my_plot.set_data(data);
   my_plot.title = "Kiln Temperature";
-  my_plot.plot_color = color(128, 128, 128);
   my_plot.bg_color = bg_color;
-  my_plot.fg_color = fg_color;
+  my_plot.fg_color = plot_fg_color;
   my_plot.text_color = text_color;
   my_plot.plot_color = plot_color;
 }
@@ -165,7 +146,7 @@ void setup() {
 void draw() {
   // time to redraw screen
   if (millis() - last_draw > draw_interval) {
-    background(220);
+    background(bg_color);
     // draw everything
     my_plot.draw_plot();
     draw_text();
@@ -174,120 +155,232 @@ void draw() {
 }
   
 void setup_UI() {
+  
+  int butt_size =75;
+  int butt_line = 0;
 
   cp5 = new ControlP5(this);
 
   cp5.addBang("START")
-    .setPosition(right_x, 50)
-    .setSize(100, 40)
-    .setColorActive(fg_color)
-    .setColorBackground(bg_color)
-    .setColorForeground(bg_color)
+    .setPosition(right_x+pad, butt_line*butt_size+pad)
+    .setSize(256-2*pad, butt_size-2*pad)
+    .setColorActive(button_active_color)
+    .setColorForeground(button_color)
     .setColorCaptionLabel(text_color)
     .getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER)
     ;   
 
   cp5.addBang("STOP")
-    .setPosition(right_x, 100)
-    .setSize(100, 40)
-    .setColorActive(fg_color)
-    .setColorBackground(bg_color)
-    .setColorForeground(bg_color)
+    .setPosition(right_x+256+pad, butt_line++*butt_size+pad)
+    .setSize(256-2*pad, butt_size-2*pad)
+    .setColorActive(button_active_color)
+    .setColorForeground(button_color)
     .setColorCaptionLabel(text_color)
     .getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER)
     ;      
+    
+  cp5.addBang("PREV")
+    .setPosition(right_x+pad, butt_line*butt_size+pad)
+    .setSize(256-2*pad, butt_size-2*pad)
+    .setColorActive(button_active_color)
+    .setColorForeground(button_color)
+    .setColorCaptionLabel(text_color)
+    .getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER)
+    ;
+    
+  cp5.addBang("NEXT")
+    .setPosition(right_x+256+pad, butt_line++*butt_size+pad)
+    .setSize(256-2*pad, butt_size-2*pad)
+    .setColorActive(button_active_color)
+    .setColorForeground(button_color)
+    .setColorCaptionLabel(text_color)
+    .getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER)
+    ; 
 
 
   cp5.addToggle("override")
-    .setPosition(right_x, bot_y-50)
-    .setSize(100, 40)
-    .setColorActive(fg_color)
-    .setColorBackground(bg_color)
-    .setColorForeground(bg_color)
+    .setPosition(right_x+pad, butt_line*butt_size+pad)
+    .setSize(256-2*pad, butt_size-2*pad)
+    .setColorActive(button_active_color)
+    .setColorBackground(button_color) 
+    .setColorForeground(button_color)
     .setColorCaptionLabel(text_color)
     .getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER)
     ;
   cp5.addNumberbox("override_value")
-    .setPosition(right_x, bot_y)
-    .setSize(100, 20)
+    .setPosition(right_x+256+pad, butt_line++*butt_size+pad)
+    .setSize(256-2*pad, butt_size-2*pad)
     .setRange(0, 1500)
     .setMultiplier(1) // set the sensitifity of the numberbox
     .setDirection(Controller.HORIZONTAL) // change the control direction to left/right
     .setValue(1000)
     .setColorActive(text_color)
-    .setColorBackground(bg_color)
-    .setColorForeground(bg_color)
+    .setColorBackground(button_color)
+    .setColorForeground(button_color)
     .setColorCaptionLabel(text_color)
     .setColorValueLabel(text_color)
     .setCaptionLabel("")
-    .getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER)
+    .getValueLabel().align(ControlP5.CENTER, ControlP5.CENTER)
     ;
-
+ 
   cp5.addBang("QUIT")
-    .setPosition(right_x, bot_y+bot_line)
-    .setSize(100, 40)
-    .setColorActive(fg_color)
-    .setColorBackground(bg_color)
-    .setColorForeground(bg_color)
+    .setPosition(right_x+pad,668+pad)
+    .setSize(512-2*pad, 100-2*pad)
+    .setColorActive(button_active_color)
+    .setColorForeground(color(255,0,0))
     .setColorCaptionLabel(text_color)
     .getCaptionLabel().align(ControlP5.CENTER, ControlP5.CENTER)
     ;
+    
+  cp5.addScrollableList("RAMPS")
+     .setPosition(right_x+pad, butt_line*butt_size+pad)
+     .setSize(512-2*pad, 300-2*pad)
+     .setBarHeight(butt_size-2*pad)
+     .setItemHeight(butt_size-2*pad)
+     .setColorForeground(button_color)
+     .setColorActive(button_active_color)
+     .setColorBackground(button_color)
+     .setOpen(false)
+     .addItems(ramp_names)
+     .setCaptionLabel("select ramp")
+     ;
+    
+ ControlFont font = new ControlFont(createFont("Arial",20));
+ cp5.getController("RAMPS").getCaptionLabel().setFont(font).toUpperCase(false).setSize(40);
+ cp5.getController("RAMPS").getCaptionLabel().getStyle().setPaddingTop(10);
+ cp5.getController("RAMPS").getCaptionLabel().getStyle().setPaddingLeft(20);
+ cp5.getController("QUIT").getCaptionLabel().setFont(font).toUpperCase(false).setSize(40);
+ cp5.getController("START").getCaptionLabel().setFont(font).toUpperCase(false).setSize(40);
+ cp5.getController("STOP").getCaptionLabel().setFont(font).toUpperCase(false).setSize(40);
+ cp5.getController("PREV").getCaptionLabel().setFont(font).toUpperCase(false).setSize(40);
+ cp5.getController("NEXT").getCaptionLabel().setFont(font).toUpperCase(false).setSize(40);
+ cp5.getController("override").getCaptionLabel().setFont(font).toUpperCase(true).setSize(40);
+ cp5.getController("override_value").getValueLabel().setFont(font).toUpperCase(false).setSize(40);
 }
 
+void RAMPS(int n) {
+  /* request the selected item based on index n */
+  //println(n, cp5.get(ScrollableList.class, "RAMPS").getItem(n));
+  //Map layerModeMap = cp5.get(ScrollableList.class, "RAMPS").getItem(n);
+  //String layerMode = (layerModeMap.values().toArray()[2]).toString();
+  //println (n + ": " + layerMode);
+  if(my_controller.get_state() == 99) {
+    current_ramp = ramps[n];
+    cp5.getController("RAMPS").setColorBackground(button_color);
+  } else cp5.getController("RAMPS").setColorBackground(color(255,0,0));
+  
+  /* here an item is stored as a Map  with the following key-value pairs:
+   * name, the given name of the item
+   * text, the given text of the item by default the same as name
+   * value, the given value of the item, can be changed by using .getItem(n).put("value", "abc"); a value here is of type Object therefore can be anything
+   * color, the given color of the item, how to change, see below
+   * view, a customizable view, is of type CDrawable 
+   */
+  
+  //CColor c = new CColor();
+  //c.setBackground(color(255,0,0));
+  //cp5.get(ScrollableList.class, "RAMPS").getItem(n).put("color", c);
+  
+}
+
+public void NEXT() {
+  // go to next ramp segment
+  my_controller.next_ramp();
+}
+
+public void PREV() {
+  // go to previous ramp segment
+  my_controller.prev_ramp();
+}
+
+// Start the firing cycle
 public void START() {
   my_controller.set_init_temp(ctemp);
   my_controller.start();
 }
 
+// Stop the firing cycle no matter what ramp we are on
 public void STOP() {
   my_controller.stop();
 }
 
+// Quit the program if not firing.
 public void QUIT() {
-  output.flush(); // Write the remaining data
-  output.close(); // Finish the file
-  myPort.clear();
-  myPort.stop(); // close the serial port
-  exit(); // Stop the program
+  if(my_controller.get_state() == 99) {
+    output.flush(); // Write the remaining data
+    output.close(); // Finish the file
+    myPort.clear();
+    myPort.stop(); // close the serial port
+    exit(); // Stop the program
+  }
 }
 
 
 void draw_text() {
-  // draw all text
-  fill(text_color);
-
-  textSize(20);
-  textAlign(LEFT);
-  text("Temp:  " + ctemp + " \u00B0C", 50, bot_y);  
-  text("Temp:  " + ftemp + " \u00B0F", 200, bot_y);
-  text("Firing Time:  " + time/3600 + " Hours", 350, bot_y);
-  text("Rate:  " + calculate_temp_rate() + " C/hr", 600, bot_y);
   
-  text("Set:  " + setpoint + " \u00B0C", 50, bot_y+bot_line);
-  text("Set:  " + (setpoint*(9.0/5.0)+32.0) + " \u00B0F", 200, bot_y+bot_line);  
-  text("Controller:  " + controller_out*100 + "%", 350, bot_y+bot_line);
-  text("Max:  " + max_temp + " C", 600, bot_y+bot_line);
+  fill(color(0,255,0));
+  noStroke();
+  rect(0+pad, 0+pad, 512-pad, 100-pad);
+  rect(0+pad, 100+pad, 512-pad, 200-pad);
+  rect(0+pad, 200+pad, 512-pad, 300-pad);
+  
+  // draw all text
+  fill(color(0,0,0));
+  textSize(40);
+  textAlign(LEFT);
+  
+  int lcol=40;
+  int mcol=150;
+  int rcol=mcol+150;
+  int rmarg = 512;
+  int line1=60;
+  int line2=160;
+  int line3=260;
+  int ramps_line=300+pad;
+  
+  text("M", lcol, line1);
+  text(String.format("%.1f", max_temp) + " C", mcol, line1);
+  text("C 6", rcol, line1);
+  
+  text("T", lcol, line2);
+  text(String.format("%.1f", ctemp) + " C", mcol, line2);
+  text(String.format("%.1f", ftemp) + " F", rcol, line2);
+  
+  text("S", lcol, line3);
+  text(String.format("%.1f", setpoint) + " C", mcol, line3);
+  text(String.format("%.1f", calculate_temp_rate()) + " C/hr", rcol, line3);
 
-  textSize(12);
-  text("Logging to file:  " + filename, 50, bot_y+bot_line*2);
-  text("Serial Data Received:  " + inBuffer, 500, bot_y+bot_line*2);
-
-  textSize(16);
-  int offset=40;
-  int col_start=200;
-  text("State:  " + my_controller.get_state(), right_x, col_start);
-  text("Ramp #:  " + my_controller.get_ramp_num(), right_x, col_start+offset);
-  text("Rate:  " + my_controller.get_current_ramp(), right_x, col_start+offset*2);
-  text("Target:  " + my_controller.get_current_target(), right_x, col_start+offset*3);
-  text("Hold:  " + my_controller.get_current_hold(), right_x, col_start+offset*4);
-  text("Heat_Cool:  " + my_controller.get_heat_cool(), right_x, col_start+offset*5);
-
-  textSize(10);
-  for (int i = 0; i < current_ramp.length; i++) {
-    for (int j = 0; j < 3; j++) {
-      text(current_ramp[i][j], right_x+j*40, col_start+offset*6+i*25);
-    }
+// rejigger this FIXME
+  int tsize=30;
+  lcol += 30;
+  textSize(tsize);
+  textAlign(RIGHT, TOP);
+  // draw ramps
+  int num_ramps = current_ramp.length;
+  for (int i = 0; i < num_ramps; i++) {
+    int cline = ramps_line+(i*tsize*2)+pad*i*2;
+    if(my_controller.get_ramp_num()==i && my_controller.get_state() != 99) fill(color(255,128,0));
+    else fill(color(255,255,0));
+    noStroke();
+    rect(0+pad, cline, 512-pad, cline+tsize*2);
+    fill(color(0,0,0));
+    text(i+1, lcol,cline+tsize/2);
+    text(String.format("%.1f", current_ramp[i][0]), lcol+120, cline+tsize/2);
+    text(String.format("%.1f", current_ramp[i][1]), lcol+260, cline+tsize/2);
+    text(String.format("%.1f", current_ramp[i][2]), lcol+380, cline+tsize/2);
   }
+    
+  //textSize(12);
+  //text("FILE:  " + filename, 520, 660);
+  //text("Serial Data Received:  " + inBuffer, 500, bot_y+bot_line*2);
+  //int offset=40;
+  //int col_start=200;
+  //text("State:  " + my_controller.get_state(), right_x, col_start);
+  //text("Ramp #:  " + my_controller.get_ramp_num(), right_x, col_start+offset);
+  //text("Rate:  " + my_controller.get_current_ramp(), right_x, col_start+offset*2);
+  //text("Target:  " + my_controller.get_current_target(), right_x, col_start+offset*3);
+  //text("Hold:  " + my_controller.get_current_hold(), right_x, col_start+offset*4);
+  //text("Heat_Cool:  " + my_controller.get_heat_cool(), right_x, col_start+offset*5);
 }
 
 void processSerial() {
@@ -322,8 +415,8 @@ void processSerial() {
     if (time==0) clean_start = true;
 
     // append string to firing log file
-    // FIXME Log only every 10 seconds?
-    output.print(inBuffer);
+    // Log only every 10 seconds
+    if(time % 10 == 0) output.print(inBuffer);
 
     // add data to running graph
     data.addPoint(time, ctemp, setpoint);
@@ -348,27 +441,49 @@ void serialEvent(Serial p) {
   processSerial();
 }
 
-float calculate_temp_rate()
-{
-  if (temp_hist.size() > 120) {
-
-    float temp_sum = 0.0;
-    for (int j = 0; j <= 2; j++) {
-      temp_sum += (Float) temp_hist.get(temp_hist.size()-j*30-1);
+float calculate_temp_rate() {
+  // try a least squares method over 30 seconds
+  if (temp_hist.size() > 30) {
+    float temp_mean = 0.0;
+    float time_mean = 0.0;
+    float t_sum = 0.0;
+    float b_sum = 0.0;
+    int temp_size = temp_hist.size();
+    for(int j=0;j<30;j++) {
+      temp_mean += (Float) temp_hist.get(temp_size-j-1);
     }
-    float temp_avg1 = temp_sum / 3.0;
-
-    temp_sum = 0.0;
-    for (int j = 2; j <= 4; j++) {
-      temp_sum += (Float) temp_hist.get(temp_hist.size()-j*30-1);
+    temp_mean /= 30.0;
+    time_mean = 14.5;
+    for(int j=0;j<30;j++) {
+      t_sum += ((Float)temp_hist.get(temp_size-j-1)-temp_mean)*(j-time_mean);
+      b_sum += ((Float)temp_hist.get(temp_size-j-1)-temp_mean)* ((Float)temp_hist.get(temp_size-j-1)-temp_mean);
     }
-    float temp_avg2 = temp_sum / 3.0;
-
-    float rate = ((temp_avg1 - temp_avg2) / 60.0) * 3600.0;
-    return rate;
-  } else { 
+    float m = t_sum/b_sum; // m is slope of least squares linear fit
+    return(m*3600.0);  // convert to C/Hr from C/sec
+  } else {
     return 0.0;
   }
+  
+  // old code
+  //if (temp_hist.size() > 120) {
+
+  //  float temp_sum = 0.0;
+  //  for (int j = 0; j <= 2; j++) {
+  //    temp_sum += (Float) temp_hist.get(temp_hist.size()-j*30-1);
+  //  }
+  //  float temp_avg1 = temp_sum / 3.0;
+
+  //  temp_sum = 0.0;
+  //  for (int j = 2; j <= 4; j++) {
+  //    temp_sum += (Float) temp_hist.get(temp_hist.size()-j*30-1);
+  //  }
+  //  float temp_avg2 = temp_sum / 3.0;
+
+  //  float rate = ((temp_avg1 - temp_avg2) / 60.0) * 3600.0;
+  //  return rate;
+  //} else { 
+  //  return 0.0;
+  //}
 }
 
 void keyPressed() {

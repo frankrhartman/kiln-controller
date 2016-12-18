@@ -93,10 +93,10 @@ void setup()
   lcd.setCursor(0,0); 
   lcd.print("KILN CONTROLLER");
   lcd.setCursor(0,1); 
-  lcd.print("VERSION 1.4");
+  lcd.print("VERSION 1.5");
   
   // wait for MAX thermocouple interface chip to stabilize
-  delay(500);
+  delay(5000);
 
   //turn the PID on
   myPID.SetMode(AUTOMATIC);

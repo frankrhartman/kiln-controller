@@ -75,6 +75,43 @@ float ramps[][][] = {
 
 float current_ramp[][] = ramps[0];
 
+String cone_names[] = {"022", "021", "020", "019", "018", "017", "016", "015", "014", "013", "012", "011",
+                       "010", "09", "08", "07", "06", "05", "04", "03", "02", "01", "1", "2", "3", "4",
+                       "5", "6", "7", "8", "9", "10"};
+                       
+float cones[][] = { {1049,1087,1094},
+                    {1076,1112,1143},
+                    {1125,1159,1180},
+                    {1213,1252,1283},
+                    {1267,1319,1353},
+                    {1301,1360,1405},
+                    {1368,1422,1465},
+                    {1382,1456,1504},
+                    {1395,1485,1540},
+                    {1485,1539,1582},
+                    {1549,1582,1620},
+                    {1575,1607,1641},
+                    {1636,1657,1679},
+                    {1665,1688,1706},
+                    {1692,1728,1753},
+                    {1764,1789,1809},
+                    {1798,1828,1855},
+                    {1870,1888,1911},
+                    {1915,1945,1971},
+                    {1960,1987,2019},
+                    {1972,2016,2052},
+                    {1999,2046,2080},
+                    {2028,2079,2109},
+                    {2034,2088,2127},
+                    {2039,2106,2138},
+                    {2086,2124,2161},
+                    {2118,2167,2205},
+                    {2165,2232,2269},
+                    {2194,2262,2295},
+                    {2212,2280,2320},
+                    {2235,2300,2336},
+                    {2284,2345,2381} };
+
 // for the running plot
 FH_plot my_plot;
 FH_kiln_data data;
@@ -100,6 +137,7 @@ int bot_line = 50;
 
 void setup() { 
   size(1024, 768);
+  surface.setTitle("supercreeps");
   //fullScreen();  //doesn't work correctly
 
   // ramp / hold controller
@@ -108,13 +146,13 @@ void setup() {
   setup_UI();
 
   // List all the available serial ports:
-  println("Available serial ports:");
-  println(Serial.list());
+  //println("Available serial ports:");
+  //println(Serial.list());
 
   // Open whatever serial port you are using
   // Add UI to select serial port form list instead of printing
-  //String portName = Serial.list()[0];
-  String portName = "/dev/pts/12"; //For coding without an Arduino attached see tty0tty.c
+  String portName = Serial.list()[0];
+  //String portName = "/dev/pts/12"; //For coding without an Arduino attached see tty0tty.c
   myPort = new Serial(this, portName, 9600);
   // buffer until a linefeed character
   // then trigger serialEvent callback
@@ -340,7 +378,7 @@ void draw_text() {
   
   text("M", lcol, line1);
   text(String.format("%.1f", max_temp) + " C", mcol, line1);
-  text("C 6", rcol, line1);
+  text(get_cone_text(max_temp), rcol, line1);
   
   text("T", lcol, line2);
   text(String.format("%.1f", ctemp) + " C", mcol, line2);
@@ -350,8 +388,7 @@ void draw_text() {
   text(String.format("%.1f", setpoint) + " C", mcol, line3);
   text(String.format("%.1f", calculate_temp_rate()) + " C/hr", rcol, line3);
 
-// rejigger this FIXME
-  int tsize=30;
+  int tsize=25;
   lcol += 30;
   textSize(tsize);
   textAlign(RIGHT, TOP);
@@ -484,6 +521,16 @@ float calculate_temp_rate() {
   //} else { 
   //  return 0.0;
   //}
+}
+
+// return orton cone string based on kiln temperature and rate
+// FIXME modify to use rate
+String get_cone_text(float temp_in) {
+  String cone_text = "C99";
+  for(int i=0;i<cones.length;i++) {
+    if(temp_in > cones[i][0]) cone_text = cone_names[i];
+  }
+  return(cone_text);
 }
 
 void keyPressed() {

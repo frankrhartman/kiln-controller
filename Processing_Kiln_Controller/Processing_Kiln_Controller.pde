@@ -142,8 +142,8 @@ void setup() {
 
   // Open whatever serial port you are using
   // Add UI to select serial port form list instead of printing
-  //String portName = Serial.list()[0];
-  String portName = "/dev/pts/11"; //For coding without an Arduino attached see tty0tty.c
+  String portName = Serial.list()[0];
+  //String portName = "/dev/pts/11"; //For coding without an Arduino attached see tty0tty.c
   myPort = new Serial(this, portName, 9600);
   // buffer until a linefeed character
   // then trigger serialEvent callback

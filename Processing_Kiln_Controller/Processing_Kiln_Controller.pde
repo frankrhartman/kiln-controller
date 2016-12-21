@@ -54,15 +54,6 @@ public float override_value = 1000;
 // the ramp controller
 FH_ramp_hold my_controller;
 
-// ramps for the controller FIXME amalgamate into one big matrix so can switch at the UI level
-//float ramp_980_hold[][] = { {55, 105, 0}, {180, 1185, 0}, {-250, 980, 60}, {0, 0, 0} };
-//float ramp_ron_roy[][] = { {55, 105, 0}, {200, 1080, 0}, {85, 1200, 15}, {-275, 1000, 0}, {-70, 760, 0}, {0, 0, 0} };
-//float ramp_creepy_mattes[][] = { {55, 105, 0}, {180, 1185, 15}, {-500, 1000, 0}, {-50, 700, 0}, {0, 0, 0} };
-//float ramp_creepy_gloss[][] = { {180, 1185, 15}, {-500, 1085, 30}, {0, 0, 0} };
-//float ramp_creepy_bisque[][] = { {55, 105, 0}, {180, 1070, 15}, {0, 0, 0} };
-//float ramp_test[][] = { {50, 50, 5}, {100, 100, 5}, {-10, 45, 0}, {0, 0, 0} };
-//float current_ramp[][] = ramp_ron_roy;
-
 List ramp_names = Arrays.asList("980 Hold", "Ron Roy", "creepy mattes", "creepy gloss", "creepy bisque", "test");
 float ramps[][][] = {
                       { {55, 105, 0}, {180, 1185, 0}, {-250, 980, 60}, {0, 0, 0} },                                  //980 Hold
@@ -70,10 +61,10 @@ float ramps[][][] = {
                       { {55, 105, 0}, {180, 1185, 15}, {-500, 1000, 0}, {-50, 700, 0}, {0, 0, 0} },                  //creepy mattes
                       { {180, 1185, 15}, {-500, 1085, 30}, {0, 0, 0} },                                              //creeoy gloss
                       { {55, 105, 0}, {180, 1070, 15}, {0, 0, 0} },                                                  //creepy bisque
-                      { {50, 50, 5}, {100, 100, 5}, {-10, 45, 0}, {0, 0, 0} }                                        //test
+                      { {50, 30, 0}, {100, 50, 2}, {-10, 45, 0}, {0, 0, 0} }                                        //test
                     };
 
-float current_ramp[][] = ramps[0];
+float current_ramp[][] = {{0, 0, 0}};
 
 String cone_names[] = {"022", "021", "020", "019", "018", "017", "016", "015", "014", "013", "012", "011",
                        "010", "09", "08", "07", "06", "05", "04", "03", "02", "01", "1", "2", "3", "4",
@@ -151,8 +142,8 @@ void setup() {
 
   // Open whatever serial port you are using
   // Add UI to select serial port form list instead of printing
-  String portName = Serial.list()[0];
-  //String portName = "/dev/pts/12"; //For coding without an Arduino attached see tty0tty.c
+  //String portName = Serial.list()[0];
+  String portName = "/dev/pts/11"; //For coding without an Arduino attached see tty0tty.c
   myPort = new Serial(this, portName, 9600);
   // buffer until a linefeed character
   // then trigger serialEvent callback
@@ -297,28 +288,11 @@ void setup_UI() {
 }
 
 void RAMPS(int n) {
-  /* request the selected item based on index n */
-  //println(n, cp5.get(ScrollableList.class, "RAMPS").getItem(n));
-  //Map layerModeMap = cp5.get(ScrollableList.class, "RAMPS").getItem(n);
-  //String layerMode = (layerModeMap.values().toArray()[2]).toString();
-  //println (n + ": " + layerMode);
   if(my_controller.get_state() == 99) {
     current_ramp = ramps[n];
+    my_controller.set_ramps(current_ramp);
     cp5.getController("RAMPS").setColorBackground(button_color);
   } else cp5.getController("RAMPS").setColorBackground(color(255,0,0));
-  
-  /* here an item is stored as a Map  with the following key-value pairs:
-   * name, the given name of the item
-   * text, the given text of the item by default the same as name
-   * value, the given value of the item, can be changed by using .getItem(n).put("value", "abc"); a value here is of type Object therefore can be anything
-   * color, the given color of the item, how to change, see below
-   * view, a customizable view, is of type CDrawable 
-   */
-  
-  //CColor c = new CColor();
-  //c.setBackground(color(255,0,0));
-  //cp5.get(ScrollableList.class, "RAMPS").getItem(n).put("color", c);
-  
 }
 
 public void NEXT() {
@@ -396,10 +370,22 @@ void draw_text() {
   int num_ramps = current_ramp.length;
   for (int i = 0; i < num_ramps; i++) {
     int cline = ramps_line+(i*tsize*2)+pad*i*2;
+    
+    // draw boxes around ramps - orange if current yellow otherwise
     if(my_controller.get_ramp_num()==i && my_controller.get_state() != 99) fill(color(255,128,0));
     else fill(color(255,255,0));
     noStroke();
     rect(0+pad, cline, 512-pad, cline+tsize*2);
+    
+    // draw red rectangle around value if holding
+    //if(my_controller.get_state() == 1) {
+    if(my_controller.get_ramp_num()==i && my_controller.get_state() == 2){
+     stroke(255,0,0);
+     strokeWeight(5);
+     rect(360, cline+pad, 512-2*pad, cline+tsize*2-pad);
+    }
+    
+    // now draw numeric ramp values
     fill(color(0,0,0));
     text(i+1, lcol,cline+tsize/2);
     text(String.format("%.1f", current_ramp[i][0]), lcol+120, cline+tsize/2);
@@ -480,47 +466,47 @@ void serialEvent(Serial p) {
 
 float calculate_temp_rate() {
   // try a least squares method over 30 seconds
-  if (temp_hist.size() > 30) {
-    float temp_mean = 0.0;
-    float time_mean = 0.0;
-    float t_sum = 0.0;
-    float b_sum = 0.0;
-    int temp_size = temp_hist.size();
-    for(int j=0;j<30;j++) {
-      temp_mean += (Float) temp_hist.get(temp_size-j-1);
-    }
-    temp_mean /= 30.0;
-    time_mean = 14.5;
-    for(int j=0;j<30;j++) {
-      t_sum += ((Float)temp_hist.get(temp_size-j-1)-temp_mean)*(j-time_mean);
-      b_sum += ((Float)temp_hist.get(temp_size-j-1)-temp_mean)* ((Float)temp_hist.get(temp_size-j-1)-temp_mean);
-    }
-    float m = t_sum/b_sum; // m is slope of least squares linear fit
-    return(m*3600.0);  // convert to C/Hr from C/sec
-  } else {
-    return 0.0;
-  }
-  
-  // old code
-  //if (temp_hist.size() > 120) {
-
-  //  float temp_sum = 0.0;
-  //  for (int j = 0; j <= 2; j++) {
-  //    temp_sum += (Float) temp_hist.get(temp_hist.size()-j*30-1);
+  //if (temp_hist.size() > 30) {
+  //  float temp_mean = 0.0;
+  //  float time_mean = 0.0;
+  //  float t_sum = 0.0;
+  //  float b_sum = 0.0;
+  //  int temp_size = temp_hist.size();
+  //  for(int j=0;j<30;j++) {
+  //    temp_mean += (Float) temp_hist.get(temp_size-j-1);
   //  }
-  //  float temp_avg1 = temp_sum / 3.0;
-
-  //  temp_sum = 0.0;
-  //  for (int j = 2; j <= 4; j++) {
-  //    temp_sum += (Float) temp_hist.get(temp_hist.size()-j*30-1);
+  //  temp_mean /= 30.0;
+  //  time_mean = 14.5;
+  //  for(int j=0;j<30;j++) {
+  //    t_sum += ((Float)temp_hist.get(temp_size-j-1)-temp_mean)*(j-time_mean);
+  //    b_sum += ((Float)temp_hist.get(temp_size-j-1)-temp_mean)* ((Float)temp_hist.get(temp_size-j-1)-temp_mean);
   //  }
-  //  float temp_avg2 = temp_sum / 3.0;
-
-  //  float rate = ((temp_avg1 - temp_avg2) / 60.0) * 3600.0;
-  //  return rate;
-  //} else { 
+  //  float m = t_sum/b_sum; // m is slope of least squares linear fit
+  //  return(m*3600.0);  // convert to C/Hr from C/sec
+  //} else {
   //  return 0.0;
   //}
+  
+  // old code
+  if (temp_hist.size() > 120) {
+
+    float temp_sum = 0.0;
+    for (int j = 0; j <= 2; j++) {
+      temp_sum += (Float) temp_hist.get(temp_hist.size()-j*30-1);
+    }
+    float temp_avg1 = temp_sum / 3.0;
+
+    temp_sum = 0.0;
+    for (int j = 2; j <= 4; j++) {
+      temp_sum += (Float) temp_hist.get(temp_hist.size()-j*30-1);
+    }
+    float temp_avg2 = temp_sum / 3.0;
+
+    float rate = ((temp_avg1 - temp_avg2) / 60.0) * 3600.0;
+    return rate;
+  } else { 
+    return 0.0;
+  }
 }
 
 // return orton cone string based on kiln temperature and rate

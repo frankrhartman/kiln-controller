@@ -45,6 +45,10 @@ class FH_ramp_hold {
   float init_temp;
 
   FH_ramp_hold(float[][] _ramps) {
+    set_ramps(_ramps);
+  }
+  
+  void set_ramps(float[][] _ramps) {
     ramps = _ramps;
     num_ramps = ramps.length;
     setpoint = 0.0;

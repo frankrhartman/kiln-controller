@@ -25,7 +25,7 @@ class FH_plot {
   float outerX1, outerY1;
   float outerX2, outerY2;
   // Offset between entire plot and data plotting area
-  float offset = 0;
+  float offset = 30;
   // Corner of data plotting area
   float plotX1, plotY1; // upper left corner of plot
   float plotX2, plotY2; // lower right corner of plot
@@ -143,7 +143,7 @@ class FH_plot {
     endShape();
     
     beginShape();
-    stroke(color(0,0,255));
+    stroke(color(255,255,0));
     for (int row = 0; row < rowCount; row++) {
       if (data.isValid(row, 1)) {
         float yvalue = data.getFloat(row, 2);

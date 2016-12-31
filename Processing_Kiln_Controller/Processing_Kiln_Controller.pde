@@ -58,10 +58,10 @@ List ramp_names = Arrays.asList("980 Hold", "Ron Roy", "creepy mattes", "creepy 
 float ramps[][][] = {
                       { {55, 105, 0}, {180, 1185, 0}, {-250, 980, 60}, {0, 0, 0} },                                  //980 Hold
                       { {55, 105, 0}, {200, 1080, 0}, {85, 1200, 15}, {-275, 1000, 0}, {-70, 760, 0}, {0, 0, 0} },   //Ron Roy
-                      { {55, 105, 0}, {180, 1185, 15}, {-500, 1000, 0}, {-50, 700, 0}, {0, 0, 0} },                  //creepy mattes
+                      { {55, 105, 0}, {180, 1195, 15}, {-500, 1140, 60}, {-500, 1000, 0}, {-50, 750, 0}, {0, 0, 0} },//creepy mattes
                       { {180, 1185, 15}, {-500, 1085, 30}, {0, 0, 0} },                                              //creeoy gloss
                       { {55, 105, 0}, {180, 1070, 15}, {0, 0, 0} },                                                  //creepy bisque
-                      { {50, 30, 0}, {100, 50, 2}, {-10, 45, 0}, {0, 0, 0} }                                        //test
+                      { {50, 30, 0}, {100, 50, 2}, {-500, 54, 0}, {-50,40,0}, {0, 0, 0} }                                        //test
                     };
 
 float current_ramp[][] = {{0, 0, 0}};
@@ -349,7 +349,8 @@ void draw_text() {
   int line2=160;
   int line3=260;
   int ramps_line=300+pad;
-  
+ 
+  //FIXME RIGHT JUSTIFY NUMERICS FH
   text("M", lcol, line1);
   text(String.format("%.1f", max_temp) + " C", mcol, line1);
   text(get_cone_text(max_temp), rcol, line1);
@@ -509,12 +510,19 @@ float calculate_temp_rate() {
   }
 }
 
+// Convert Celcius to Fahrenheit
+float C_to_F(float C_in) {
+  return(C_in * 1.8 + 32);
+}
+
 // return orton cone string based on kiln temperature and rate
+// temp is is C and lookup is F
 // FIXME modify to use rate
 String get_cone_text(float temp_in) {
   String cone_text = "C99";
+  float f_temp = C_to_F(temp_in);
   for(int i=0;i<cones.length;i++) {
-    if(temp_in > cones[i][0]) cone_text = cone_names[i];
+    if(f_temp > cones[i][0]) cone_text = cone_names[i];
   }
   return(cone_text);
 }
